@@ -24,6 +24,17 @@ OPTIONS:
     -c, --count        Packet count to send
 ```
 
+## Examples
+#### TCP
+```
+dotnet run --project src -- tcp -i Ethernet --dstIp 192.168.2.1 --dstPort 80
+```
+
+#### UDP
+```
+dotnet run --project src -- udp -i Ethernet --dstIp 192.168.2.1 --dstPort 80
+```
+
 ## Dependencies
 - [.NET 8+](https://dotnet.microsoft.com/en-us/download)
 - [SharpPcap](https://www.nuget.org/packages/SharpPcap)
