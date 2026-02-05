@@ -23,3 +23,20 @@ OPTIONS:
         --srcPort      The source port
     -c, --count        Packet count to send
 ```
+
+## Dependencies
+- [.NET 8+](https://dotnet.microsoft.com/en-us/download)
+- [SharpPcap](https://www.nuget.org/packages/SharpPcap)
+
+## Contributing
+Feel free to open issues, submit bug reports, or suggest improvements.
+
+Donations
+**Monero (XMR)**
+```
+4BE47AD2o1QFu2oq1HEx6i9QBM2xcMaMGSc4vdW9sPZz8LNNue9DZqqiagR9KbQndYgNNTmDjXY87CdQTETAFmAgSSjAEQj
+```
+
+## Author
+
+<b>João H.</b> (joaostack) – [GitHub](https://github.com/joaostack)
