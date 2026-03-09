@@ -136,14 +136,18 @@ public class PacketBuilder
             var ethernetPacket = new EthernetPacket(sourceMac, targetMac, EthernetType.IPv4);
 
             // -- Create a TCP Packet base
-            var tcpPacket = new TcpPacket(srcPort, dstPort);
-            tcpPacket.WindowSize = 8192;
-            tcpPacket.SequenceNumber = (uint)new Random().Next();
+            var tcpPacket = new TcpPacket(srcPort, dstPort)
+            {
+                WindowSize = 8192,
+                SequenceNumber = (uint)new Random().Next()
+            };
 
             // -- Create a IP Packet base
-            var ipPacket = new IPv4Packet(ipSrc, ipDst);
-            ipPacket.TimeToLive = 64;
-            ipPacket.PayloadPacket = tcpPacket;
+            var ipPacket = new IPv4Packet(ipSrc, ipDst)
+            {
+                TimeToLive = 64,
+                PayloadPacket = tcpPacket
+            };
 
             // -- Update checksums
             ipPacket.CalculateIPChecksum();
