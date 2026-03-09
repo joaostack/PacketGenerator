@@ -97,13 +97,10 @@ public class CommandHandler : Command<ConsoleSettings>
             var packetCount = settings.PacketCount;
 
             if (string.Equals(settings.ProtocolType.ToLower(), Protocols.tcp.ToString()))
-            {
                 PacketBuilder.GenTCPPacket(device, srcIp, dstIp, (ushort)srcPort, dstPort, packetCount, verbose);
-            }
+
             if (string.Equals(settings.ProtocolType.ToLower(), Protocols.udp.ToString()))
-            {
                 PacketBuilder.GenUDPPacket(device, srcIp, dstIp, (ushort)srcPort, dstPort, packetCount, verbose);
-            }
         }
         catch (Exception ex)
         {
@@ -219,9 +216,7 @@ public class PacketBuilder
                 AnsiConsole.MarkupLine($"[cyan][[VERBOSE]][/] TCP Checksum [green]{udpPacket.Checksum}[/] - Len [green]{udpPacket.Bytes.Length}[/]");
 
                 if (targetMac != unknownMac)
-                {
                     AnsiConsole.MarkupLine($"[cyan][[VERBOSE]][/] [green]{ipDst}[/] has [green]{DeviceHelpers.FormatMac(targetMac.ToString())}[/]");
-                }
             }
 
             // -- Assign IP Packet to the ethernetPacket
