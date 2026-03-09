@@ -201,9 +201,11 @@ public class PacketBuilder
             // -- Create a UDP Packet base
             var udpPacket = new UdpPacket(srcPort, dstPort);
             // -- Create a IP Packet base
-            var ipPacket = new IPv4Packet(ipSrc, ipDst);
-            ipPacket.TimeToLive = 64;
-            ipPacket.PayloadPacket = udpPacket;
+            var ipPacket = new IPv4Packet(ipSrc, ipDst)
+            {
+                TimeToLive = 64,
+                PayloadPacket = udpPacket
+            };
 
             // -- Update checksums
             ipPacket.CalculateIPChecksum();
