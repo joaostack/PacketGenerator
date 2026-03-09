@@ -1,5 +1,5 @@
 ﻿/*
- ▐▄▄▄       ▄▄▄·       .▄▄ · ▄▄▄▄▄ ▄▄▄·  ▄▄· ▄ •▄ 
+ ▐▄▄▄       ▄▄▄·       .▄▄ · ▄▄▄▄▄ ▄▄▄·  ▄▄· ▄ •▄
   ·██▪     ▐█ ▀█ ▪     ▐█ ▀. •██  ▐█ ▀█ ▐█ ▌▪█▌▄▌▪
 ▪▄ ██ ▄█▀▄ ▄█▀▀█  ▄█▀▄ ▄▀▀▀█▄ ▐█.▪▄█▀▀█ ██ ▄▄▐▀▀▄·
 ▐▌▐█▌▐█▌.▐▌▐█ ▪▐▌▐█▌.▐▌▐█▄▪▐█ ▐█▌·▐█ ▪▐▌▐███▌▐█.█▌
@@ -88,26 +88,21 @@ public class CommandHandler : Command<ConsoleSettings>
     {
         try
         {
-            // -- open interface
-            if (!string.IsNullOrEmpty(settings.InterfaceName))
+            var device = DeviceHelpers.SelectOpenDevice(settings.InterfaceName);
+            var dstIp = IPAddress.Parse(settings.DstIP);
+            var dstPort = settings.DstPort;
+            var srcIp = settings.SrcIP != null ? IPAddress.Parse(settings.SrcIP) : IPAddress.Any;
+            var srcPort = settings.SrcPort <= 0 ? new Random().Next(10000, 65535) : settings.SrcPort;
+            var verbose = settings.Verbose;
+            var packetCount = settings.PacketCount;
+
+            if (string.Equals(settings.ProtocolType.ToLower(), Protocols.tcp.ToString()))
             {
-                var device = DeviceHelpers.SelectOpenDevice(settings.InterfaceName);
-
-                var dstIp = IPAddress.Parse(settings.DstIP);
-                var dstPort = settings.DstPort;
-                var srcIp = settings.SrcIP != null ? IPAddress.Parse(settings.SrcIP) : IPAddress.Any;
-                var srcPort = settings.SrcPort <= 0 ? new Random().Next(10000, 65535) : settings.SrcPort;
-                var verbose = settings.Verbose;
-                var packetCount = settings.PacketCount;
-
-                if (string.Equals(settings.ProtocolType.ToLower(), Protocols.tcp.ToString()))
-                {
-                    PacketBuilder.GenTCPPacket(device, srcIp, dstIp, (ushort)srcPort, dstPort, packetCount, verbose);
-                }
-                if (string.Equals(settings.ProtocolType.ToLower(), Protocols.udp.ToString()))
-                {
-                    PacketBuilder.GenUDPPacket(device, srcIp, dstIp, (ushort)srcPort, dstPort, packetCount, verbose);
-                }
+                PacketBuilder.GenTCPPacket(device, srcIp, dstIp, (ushort)srcPort, dstPort, packetCount, verbose);
+            }
+            if (string.Equals(settings.ProtocolType.ToLower(), Protocols.udp.ToString()))
+            {
+                PacketBuilder.GenUDPPacket(device, srcIp, dstIp, (ushort)srcPort, dstPort, packetCount, verbose);
             }
         }
         catch (Exception ex)
@@ -352,7 +347,8 @@ public class DeviceHelpers
         try
         {
             return ((SharpPcap.LibPcap.LibPcapLiveDevice)device).Addresses
-                    .FirstOrDefault(a => a.Addr?.ipAddress != null && a.Addr.ipAddress.AddressFamily == AddressFamily.InterNetwork)
+                    .FirstOrDefault(a => a.Addr?.ipAddress != null
+                            && a.Addr.ipAddress.AddressFamily == AddressFamily.InterNetwork)
                     ?.Addr?.ipAddress ?? throw new Exception("Local ip address not found, try switch interface!");
         }
         catch
