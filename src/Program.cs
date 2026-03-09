@@ -158,9 +158,7 @@ public class PacketBuilder
                 AnsiConsole.MarkupLine($"[cyan][[VERBOSE]][/] TCP Checksum [green]{tcpPacket.Checksum}[/] - Len [green]{tcpPacket.Bytes.Length}[/]");
 
                 if (targetMac != unknownMac)
-                {
                     AnsiConsole.MarkupLine($"[cyan][[VERBOSE]][/] [green]{ipDst}[/] has [green]{DeviceHelpers.FormatMac(targetMac.ToString())}[/]");
-                }
             }
 
             // -- Assign ipPacket to the ethernetPacket
