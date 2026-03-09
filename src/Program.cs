@@ -121,60 +121,53 @@ public class PacketBuilder
     /// </summary>
     public static void GenTCPPacket(ILiveDevice device, IPAddress ipSrc, IPAddress ipDst, ushort srcPort, ushort dstPort, int packetCount, bool verbose = false)
     {
-        try
+        ipSrc = ipSrc != null ? ipSrc : DeviceHelpers.GetLocalIP(device);
+
+        PhysicalAddress unknownMac = PhysicalAddress.Parse("00-00-00-00-00-00");
+        PhysicalAddress sourceMac = device.MacAddress ?? throw new Exception("No MAC found for this interface, try switch.");
+        PhysicalAddress targetMac = PacketBuilder.GetMacByIP(device, ipDst) ?? unknownMac;
+
+        // -- Create EthernetPacket
+        var ethernetPacket = new EthernetPacket(sourceMac, targetMac, EthernetType.IPv4);
+
+        // -- Create a TCP Packet base
+        var tcpPacket = new TcpPacket(srcPort, dstPort)
         {
-            ipSrc = ipSrc != null ? ipSrc : DeviceHelpers.GetLocalIP(device);
+            WindowSize = 8192,
+            SequenceNumber = (uint)new Random().Next()
+        };
 
-            PhysicalAddress unknownMac = PhysicalAddress.Parse("00-00-00-00-00-00");
-            PhysicalAddress sourceMac = device.MacAddress ?? throw new Exception("No MAC found for this interface, try switch.");
-            PhysicalAddress targetMac = PacketBuilder.GetMacByIP(device, ipDst) ?? unknownMac;
+        // -- Create a IP Packet base
+        var ipPacket = new IPv4Packet(ipSrc, ipDst)
+        {
+            TimeToLive = 64,
+            PayloadPacket = tcpPacket
+        };
 
-            // -- Create EthernetPacket
-            var ethernetPacket = new EthernetPacket(sourceMac, targetMac, EthernetType.IPv4);
+        // -- Update checksums
+        ipPacket.CalculateIPChecksum();
+        ipPacket.UpdateIPChecksum();
+        tcpPacket.CalculateTcpChecksum();
+        tcpPacket.UpdateTcpChecksum();
 
-            // -- Create a TCP Packet base
-            var tcpPacket = new TcpPacket(srcPort, dstPort)
-            {
-                WindowSize = 8192,
-                SequenceNumber = (uint)new Random().Next()
-            };
+        if (verbose)
+        {
+            AnsiConsole.MarkupLine($"[cyan][[VERBOSE]][/] IP Checksum [green]{ipPacket.Checksum}[/] - Len [green]{ipPacket.Bytes.Length}[/]");
+            AnsiConsole.MarkupLine($"[cyan][[VERBOSE]][/] TCP Checksum [green]{tcpPacket.Checksum}[/] - Len [green]{tcpPacket.Bytes.Length}[/]");
 
-            // -- Create a IP Packet base
-            var ipPacket = new IPv4Packet(ipSrc, ipDst)
-            {
-                TimeToLive = 64,
-                PayloadPacket = tcpPacket
-            };
-
-            // -- Update checksums
-            ipPacket.CalculateIPChecksum();
-            ipPacket.UpdateIPChecksum();
-            tcpPacket.CalculateTcpChecksum();
-            tcpPacket.UpdateTcpChecksum();
-
-            if (verbose)
-            {
-                AnsiConsole.MarkupLine($"[cyan][[VERBOSE]][/] IP Checksum [green]{ipPacket.Checksum}[/] - Len [green]{ipPacket.Bytes.Length}[/]");
-                AnsiConsole.MarkupLine($"[cyan][[VERBOSE]][/] TCP Checksum [green]{tcpPacket.Checksum}[/] - Len [green]{tcpPacket.Bytes.Length}[/]");
-
-                if (targetMac != unknownMac)
-                    AnsiConsole.MarkupLine($"[cyan][[VERBOSE]][/] [green]{ipDst}[/] has [green]{DeviceHelpers.FormatMac(targetMac.ToString())}[/]");
-            }
-
-            // -- Assign ipPacket to the ethernetPacket
-            ethernetPacket.PayloadPacket = ipPacket;
-
-            for (int i = 0; i <= packetCount; i++)
-            {
-                device.SendPacket(ethernetPacket);
-
-                AnsiConsole.MarkupLine($"[blue][[+]][/] IP DST = [green]{ipDst}:{dstPort}[/] - IP SRC = [green]{ipSrc}:{srcPort}[/]");
-                AnsiConsole.MarkupLine($"[blue][[+]][/] [yellow]{DateTime.UtcNow}[/] TCP packet sent!");
-            }
+            if (targetMac != unknownMac)
+                AnsiConsole.MarkupLine($"[cyan][[VERBOSE]][/] [green]{ipDst}[/] has [green]{DeviceHelpers.FormatMac(targetMac.ToString())}[/]");
         }
-        catch
+
+        // -- Assign ipPacket to the ethernetPacket
+        ethernetPacket.PayloadPacket = ipPacket;
+
+        for (int i = 0; i <= packetCount; i++)
         {
-            throw;
+            device.SendPacket(ethernetPacket);
+
+            AnsiConsole.MarkupLine($"[blue][[+]][/] IP DST = [green]{ipDst}:{dstPort}[/] - IP SRC = [green]{ipSrc}:{srcPort}[/]");
+            AnsiConsole.MarkupLine($"[blue][[+]][/] [yellow]{DateTime.UtcNow}[/] TCP packet sent!");
         }
     }
 
@@ -183,54 +176,47 @@ public class PacketBuilder
     /// </summary>
     public static void GenUDPPacket(ILiveDevice device, IPAddress ipSrc, IPAddress ipDst, ushort srcPort, ushort dstPort, int packetCount, bool verbose = false)
     {
-        try
+        ipSrc = ipSrc != null ? ipSrc : DeviceHelpers.GetLocalIP(device);
+
+        PhysicalAddress unknownMac = PhysicalAddress.Parse("00-00-00-00-00-00");
+        PhysicalAddress sourceMac = device.MacAddress ?? throw new Exception("No MAC found for this interface, try switch.");
+        PhysicalAddress targetMac = PacketBuilder.GetMacByIP(device, ipDst) ?? unknownMac;
+
+        // -- Create EthernetPacket
+        var ethernetPacket = new EthernetPacket(sourceMac, targetMac, EthernetType.IPv4);
+        // -- Create a UDP Packet base
+        var udpPacket = new UdpPacket(srcPort, dstPort);
+        // -- Create a IP Packet base
+        var ipPacket = new IPv4Packet(ipSrc, ipDst)
         {
-            ipSrc = ipSrc != null ? ipSrc : DeviceHelpers.GetLocalIP(device);
+            TimeToLive = 64,
+            PayloadPacket = udpPacket
+        };
 
-            PhysicalAddress unknownMac = PhysicalAddress.Parse("00-00-00-00-00-00");
-            PhysicalAddress sourceMac = device.MacAddress ?? throw new Exception("No MAC found for this interface, try switch.");
-            PhysicalAddress targetMac = PacketBuilder.GetMacByIP(device, ipDst) ?? unknownMac;
+        // -- Update checksums
+        ipPacket.CalculateIPChecksum();
+        ipPacket.UpdateIPChecksum();
+        udpPacket.CalculateUdpChecksum();
+        udpPacket.UpdateUdpChecksum();
 
-            // -- Create EthernetPacket
-            var ethernetPacket = new EthernetPacket(sourceMac, targetMac, EthernetType.IPv4);
-            // -- Create a UDP Packet base
-            var udpPacket = new UdpPacket(srcPort, dstPort);
-            // -- Create a IP Packet base
-            var ipPacket = new IPv4Packet(ipSrc, ipDst)
-            {
-                TimeToLive = 64,
-                PayloadPacket = udpPacket
-            };
+        if (verbose)
+        {
+            AnsiConsole.MarkupLine($"[cyan][[VERBOSE]][/] IP Checksum [green]{ipPacket.Checksum}[/] - Len [green]{ipPacket.Bytes.Length}[/]");
+            AnsiConsole.MarkupLine($"[cyan][[VERBOSE]][/] TCP Checksum [green]{udpPacket.Checksum}[/] - Len [green]{udpPacket.Bytes.Length}[/]");
 
-            // -- Update checksums
-            ipPacket.CalculateIPChecksum();
-            ipPacket.UpdateIPChecksum();
-            udpPacket.CalculateUdpChecksum();
-            udpPacket.UpdateUdpChecksum();
-
-            if (verbose)
-            {
-                AnsiConsole.MarkupLine($"[cyan][[VERBOSE]][/] IP Checksum [green]{ipPacket.Checksum}[/] - Len [green]{ipPacket.Bytes.Length}[/]");
-                AnsiConsole.MarkupLine($"[cyan][[VERBOSE]][/] TCP Checksum [green]{udpPacket.Checksum}[/] - Len [green]{udpPacket.Bytes.Length}[/]");
-
-                if (targetMac != unknownMac)
-                    AnsiConsole.MarkupLine($"[cyan][[VERBOSE]][/] [green]{ipDst}[/] has [green]{DeviceHelpers.FormatMac(targetMac.ToString())}[/]");
-            }
-
-            // -- Assign IP Packet to the ethernetPacket
-            ethernetPacket.PayloadPacket = ipPacket;
-
-            for (int i = 0; i <= packetCount; i++)
-            {
-                device.SendPacket(ethernetPacket);
-
-                AnsiConsole.MarkupLine($"[blue][[+]][/] IP DST = [green]{ipDst}:{dstPort}[/] - IP SRC = [green]{ipSrc}:{srcPort}[/]");
-                AnsiConsole.MarkupLine($"[blue][[+]][/] [yellow]{DateTime.UtcNow}[/] TCP packet sent!");
-            }
+            if (targetMac != unknownMac)
+                AnsiConsole.MarkupLine($"[cyan][[VERBOSE]][/] [green]{ipDst}[/] has [green]{DeviceHelpers.FormatMac(targetMac.ToString())}[/]");
         }
-        catch
+
+        // -- Assign IP Packet to the ethernetPacket
+        ethernetPacket.PayloadPacket = ipPacket;
+
+        for (int i = 0; i <= packetCount; i++)
         {
-            throw;
+            device.SendPacket(ethernetPacket);
+
+            AnsiConsole.MarkupLine($"[blue][[+]][/] IP DST = [green]{ipDst}:{dstPort}[/] - IP SRC = [green]{ipSrc}:{srcPort}[/]");
+            AnsiConsole.MarkupLine($"[blue][[+]][/] [yellow]{DateTime.UtcNow}[/] TCP packet sent!");
         }
     }
 
@@ -239,48 +225,41 @@ public class PacketBuilder
     /// </summary>
     public static PhysicalAddress GetMacByIP(ILiveDevice device, IPAddress target)
     {
-        try
+        var localIp = DeviceHelpers.GetLocalIP(device);
+        var sourceMac = device.MacAddress ?? throw new Exception("No MAC found for this interface, try switch.");
+        PhysicalAddress unknownMac = PhysicalAddress.Parse("00-00-00-00-00-00");
+        PhysicalAddress broadccastMac = PhysicalAddress.Parse("FF-FF-FF-FF-FF-FF");
+
+        var ethernetPacket = new EthernetPacket(sourceMac, broadccastMac, EthernetType.None);
+        var arpPacket = new ArpPacket(ArpOperation.Request, unknownMac, target, sourceMac, localIp);
+        ethernetPacket.PayloadPacket = arpPacket;
+
+        PhysicalAddress targetMac = PhysicalAddress.None;
+
+        PacketArrivalEventHandler handler = (sender, e) =>
         {
-            var localIp = DeviceHelpers.GetLocalIP(device);
-            var sourceMac = device.MacAddress ?? throw new Exception("No MAC found for this interface, try switch.");
-            PhysicalAddress unknownMac = PhysicalAddress.Parse("00-00-00-00-00-00");
-            PhysicalAddress broadccastMac = PhysicalAddress.Parse("FF-FF-FF-FF-FF-FF");
+            var rawPacket = e.GetPacket();
+            var packet = Packet.ParsePacket(rawPacket.LinkLayerType, rawPacket.Data);
+            var arpPacket = packet.Extract<ArpPacket>();
 
-            var ethernetPacket = new EthernetPacket(sourceMac, broadccastMac, EthernetType.None);
-            var arpPacket = new ArpPacket(ArpOperation.Request, unknownMac, target, sourceMac, localIp);
-            ethernetPacket.PayloadPacket = arpPacket;
-
-            PhysicalAddress targetMac = PhysicalAddress.None;
-
-            PacketArrivalEventHandler handler = (sender, e) =>
+            if (arpPacket != null
+                    && arpPacket.Operation == ArpOperation.Response
+                    && arpPacket.SenderProtocolAddress.Equals(target))
             {
-                var rawPacket = e.GetPacket();
-                var packet = Packet.ParsePacket(rawPacket.LinkLayerType, rawPacket.Data);
-                var arpPacket = packet.Extract<ArpPacket>();
+                targetMac = arpPacket.SenderHardwareAddress;
+                return;
+            }
+        };
 
-                if (arpPacket != null
-                        && arpPacket.Operation == ArpOperation.Response
-                        && arpPacket.SenderProtocolAddress.Equals(target))
-                {
-                    targetMac = arpPacket.SenderHardwareAddress;
-                    return;
-                }
-            };
+        device.OnPacketArrival += handler;
+        device.StartCapture();
+        device.SendPacket(ethernetPacket);
+        // -- Wait for arp response...
+        Thread.Sleep(1500);
 
-            device.OnPacketArrival += handler;
-            device.StartCapture();
-            device.SendPacket(ethernetPacket);
-            // -- Wait for arp response...
-            Thread.Sleep(1500);
+        device.OnPacketArrival -= handler;
 
-            device.OnPacketArrival -= handler;
-
-            return targetMac ?? throw new Exception("Mac not found for this IP!");
-        }
-        catch
-        {
-            throw;
-        }
+        return targetMac ?? throw new Exception("Mac not found for this IP!");
     }
 }
 
@@ -291,21 +270,14 @@ public class DeviceHelpers
     /// </summary>
     public static IPAddress GetGateway()
     {
-        try
-        {
-            return NetworkInterface
-                .GetAllNetworkInterfaces()
-                .Where(n => n.OperationalStatus == OperationalStatus.Up)
-                .Where(n => n.NetworkInterfaceType != NetworkInterfaceType.Loopback)
-                .SelectMany(n => n.GetIPProperties().GatewayAddresses)
-                .Select(g => g?.Address)
-                .Where(a => a != null)
-                .FirstOrDefault() ?? throw new Exception("No gateway found!");
-        }
-        catch
-        {
-            throw;
-        }
+        return NetworkInterface
+            .GetAllNetworkInterfaces()
+            .Where(n => n.OperationalStatus == OperationalStatus.Up)
+            .Where(n => n.NetworkInterfaceType != NetworkInterfaceType.Loopback)
+            .SelectMany(n => n.GetIPProperties().GatewayAddresses)
+            .Select(g => g?.Address)
+            .Where(a => a != null)
+            .FirstOrDefault() ?? throw new Exception("No gateway found!");
     }
 
     /// <summary>
@@ -313,29 +285,22 @@ public class DeviceHelpers
     /// </summary>
     public static ILiveDevice SelectOpenDevice(string devName)
     {
-        try
+        var devices = CaptureDeviceList.Instance;
+        if (devices.Count < 1)
         {
-            var devices = CaptureDeviceList.Instance;
-            if (devices.Count < 1)
-            {
-                throw new InvalidOperationException("No devices found! Please connect a network adapter.");
-            }
-
-            LibPcapLiveDeviceList deviceList = LibPcapLiveDeviceList.Instance;
-
-            var device = deviceList
-                ?.Where(d => string.Equals(d.Interface?.FriendlyName?.ToLower(), devName.ToLower()))
-                ?.FirstOrDefault()
-                ?? throw new Exception("Device not found!");
-
-            device.Open(DeviceModes.Promiscuous, 1000);
-
-            return device;
+            throw new InvalidOperationException("No devices found! Please connect a network adapter.");
         }
-        catch
-        {
-            throw;
-        }
+
+        LibPcapLiveDeviceList deviceList = LibPcapLiveDeviceList.Instance;
+
+        var device = deviceList
+            ?.Where(d => string.Equals(d.Interface?.FriendlyName?.ToLower(), devName.ToLower()))
+            ?.FirstOrDefault()
+            ?? throw new Exception("Device not found!");
+
+        device.Open(DeviceModes.Promiscuous, 1000);
+
+        return device;
     }
 
     /// <summary>
@@ -343,17 +308,10 @@ public class DeviceHelpers
     /// </summary>
     public static IPAddress GetLocalIP(ILiveDevice device)
     {
-        try
-        {
-            return ((SharpPcap.LibPcap.LibPcapLiveDevice)device).Addresses
-                    .FirstOrDefault(a => a.Addr?.ipAddress != null
-                            && a.Addr.ipAddress.AddressFamily == AddressFamily.InterNetwork)
-                    ?.Addr?.ipAddress ?? throw new Exception("Local ip address not found, try switch interface!");
-        }
-        catch
-        {
-            throw;
-        }
+        return ((SharpPcap.LibPcap.LibPcapLiveDevice)device).Addresses
+                .FirstOrDefault(a => a.Addr?.ipAddress != null
+                        && a.Addr.ipAddress.AddressFamily == AddressFamily.InterNetwork)
+                ?.Addr?.ipAddress ?? throw new Exception("Local ip address not found, try switch interface!");
     }
 
     /// <summary>
