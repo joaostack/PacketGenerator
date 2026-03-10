@@ -119,13 +119,13 @@ public class PacketBuilder
     /// <summary>
     /// Create a basic TCP packet
     /// </summary>
-    public static void GenTCPPacket(ILiveDevice device, IPAddress ipSrc, IPAddress ipDst, ushort srcPort, ushort dstPort, int packetCount, bool verbose = false)
+    public static async Task GenTCPPacket(ILiveDevice device, IPAddress ipSrc, IPAddress ipDst, ushort srcPort, ushort dstPort, int packetCount, bool verbose = false)
     {
         ipSrc = ipSrc != null ? ipSrc : DeviceHelpers.GetLocalIP(device);
 
         PhysicalAddress unknownMac = PhysicalAddress.Parse("00-00-00-00-00-00");
         PhysicalAddress sourceMac = device.MacAddress ?? throw new Exception("No MAC found for this interface, try switch.");
-        PhysicalAddress targetMac = PacketBuilder.GetMacByIP(device, ipDst) ?? unknownMac;
+        PhysicalAddress targetMac = await PacketBuilder.GetMacByIP(device, ipDst) ?? unknownMac;
 
         // -- Create EthernetPacket
         var ethernetPacket = new EthernetPacket(sourceMac, targetMac, EthernetType.IPv4);
