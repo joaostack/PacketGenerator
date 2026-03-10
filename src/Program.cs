@@ -21,7 +21,7 @@ namespace PacketGenerator;
 
 class Program
 {
-    static void Main(string[] args)
+    static async Task Main(string[] args)
     {
         AnsiConsole.Write(new FigletText("PacketGenerator").Color(Color.Magenta));
         var app = new CommandApp<CommandHandler>();
@@ -30,7 +30,7 @@ class Program
             config.SetApplicationName("PacketGenerator");
             config.SetApplicationVersion("1.0.0");
         });
-        app.Run(args);
+        await app.RunAsync(args);
     }
 }
 
@@ -82,9 +82,9 @@ public class ConsoleSettings : CommandSettings
 /// <summary>
 /// Class to handle the commands
 /// </summary>
-public class CommandHandler : Command<ConsoleSettings>
+public class CommandHandler : AsyncCommand<ConsoleSettings>
 {
-    public override int Execute(CommandContext context, ConsoleSettings settings, CancellationToken cancellation)
+    public override async Task<int> ExecuteAsync(CommandContext context, ConsoleSettings settings, CancellationToken cancellation)
     {
         try
         {
@@ -97,10 +97,10 @@ public class CommandHandler : Command<ConsoleSettings>
             var packetCount = settings.PacketCount;
 
             if (string.Equals(settings.ProtocolType.ToLower(), Protocols.tcp.ToString()))
-                PacketBuilder.GenTCPPacket(device, srcIp, dstIp, (ushort)srcPort, dstPort, packetCount, verbose);
+                await PacketBuilder.GenTCPPacket(device, srcIp, dstIp, (ushort)srcPort, dstPort, packetCount, verbose);
 
             if (string.Equals(settings.ProtocolType.ToLower(), Protocols.udp.ToString()))
-                PacketBuilder.GenUDPPacket(device, srcIp, dstIp, (ushort)srcPort, dstPort, packetCount, verbose);
+                await PacketBuilder.GenUDPPacket(device, srcIp, dstIp, (ushort)srcPort, dstPort, packetCount, verbose);
         }
         catch (Exception ex)
         {
