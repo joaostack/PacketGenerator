@@ -174,13 +174,13 @@ public class PacketBuilder
     /// <summary>
     /// Create a basic UDP Packet
     /// </summary>
-    public static void GenUDPPacket(ILiveDevice device, IPAddress ipSrc, IPAddress ipDst, ushort srcPort, ushort dstPort, int packetCount, bool verbose = false)
+    public static async Task GenUDPPacket(ILiveDevice device, IPAddress ipSrc, IPAddress ipDst, ushort srcPort, ushort dstPort, int packetCount, bool verbose = false)
     {
         ipSrc = ipSrc != null ? ipSrc : DeviceHelpers.GetLocalIP(device);
 
         PhysicalAddress unknownMac = PhysicalAddress.Parse("00-00-00-00-00-00");
         PhysicalAddress sourceMac = device.MacAddress ?? throw new Exception("No MAC found for this interface, try switch.");
-        PhysicalAddress targetMac = PacketBuilder.GetMacByIP(device, ipDst) ?? unknownMac;
+        PhysicalAddress targetMac = await PacketBuilder.GetMacByIP(device, ipDst) ?? unknownMac;
 
         // -- Create EthernetPacket
         var ethernetPacket = new EthernetPacket(sourceMac, targetMac, EthernetType.IPv4);
@@ -223,7 +223,7 @@ public class PacketBuilder
     /// <summary>
     /// Find to the mac address by IP, using ARP
     /// </summary>
-    public static PhysicalAddress GetMacByIP(ILiveDevice device, IPAddress target)
+    public static async Task<PhysicalAddress> GetMacByIP(ILiveDevice device, IPAddress target)
     {
         var localIp = DeviceHelpers.GetLocalIP(device);
         var sourceMac = device.MacAddress ?? throw new Exception("No MAC found for this interface, try switch.");
@@ -255,7 +255,7 @@ public class PacketBuilder
         device.StartCapture();
         device.SendPacket(ethernetPacket);
         // -- Wait for arp response...
-        Thread.Sleep(1500);
+        await Task.Delay(1500);
 
         device.OnPacketArrival -= handler;
 
